@@ -16,7 +16,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 @TeleOp
 public class ftcCode extends OpMode {
-    private Limelight3A limelight; //limelight
+    private Limelight3A limelight; //limelight!
     private double distance;
     public IMU imu;
     @Override
