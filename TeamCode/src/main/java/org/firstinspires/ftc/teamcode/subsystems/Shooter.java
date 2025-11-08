@@ -20,6 +20,7 @@ public class Shooter implements Subsystem {
     private final MotorEx motor2 = new MotorEx("frontRightMotor");
 
     public final Command movePos = new SetPosition(servo, ShooterConstants.pos).requires(this);
+    public final Command defaultPos = new SetPosition(servo, 0.0).requires(this);
 
     public final Command moveShooter = new SequentialGroup(
             new SetPower(motor1, -ShooterConstants.motorPower).requires(this),
