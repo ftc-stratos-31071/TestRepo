@@ -20,7 +20,7 @@ public class ShooterTele extends NextFTCOpMode {
 
     @Override
     public void onStartButtonPressed() {
-        Gamepads.gamepad1().leftBumper().whenBecomesTrue(Shooter.INSTANCE.movePos);
+        Gamepads.gamepad1().leftBumper().whenBecomesTrue(Shooter.INSTANCE.moveServoPos);
         Gamepads.gamepad1().rightBumper().whenBecomesTrue(Shooter.INSTANCE.moveShooter);
         Gamepads.gamepad1().a().whenBecomesTrue(Shooter.INSTANCE.defaultPos);
     }

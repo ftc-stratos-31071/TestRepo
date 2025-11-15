@@ -15,15 +15,20 @@ public class Shooter implements Subsystem {
 
     private Shooter() {}
 
-    private final ServoEx servo = new ServoEx("servo");
-    private final MotorEx motor1 = new MotorEx("frontLeftMotor").reversed();
-    private final MotorEx motor2 = new MotorEx("frontRightMotor");
+    private final ServoEx servo = new ServoEx("shooterServo");
+    private final MotorEx motor1 = new MotorEx("shooterMotor1").reversed();
+    private final MotorEx motor2 = new MotorEx("shooterMotor2");
 
-    public final Command movePos = new SetPosition(servo, ShooterConstants.pos).requires(this);
-    public final Command defaultPos = new SetPosition(servo, 0.0).requires(this);
+    public final Command moveServoPos = new SetPosition(servo, ShooterConstants.servoPos).requires(this);
+    public final Command defaultPos = new SetPosition(servo, ShooterConstants.defaultPos).requires(this);
 
     public final Command moveShooter = new SequentialGroup(
             new SetPower(motor1, -ShooterConstants.motorPower).requires(this),
             new SetPower(motor2,  ShooterConstants.motorPower).requires(this)
+    ).requires(this);
+
+    public final Command zeroPower = new SequentialGroup(
+            new SetPower(motor1, ShooterConstants.zeroPower).requires(this),
+            new SetPower(motor2,  ShooterConstants.zeroPower).requires(this)
     ).requires(this);
 }

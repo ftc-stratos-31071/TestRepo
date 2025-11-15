@@ -3,7 +3,10 @@ package org.firstinspires.ftc.teamcode.opmodes.teleops;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.subsystems.Claw;
+import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Lift;
+import org.firstinspires.ftc.teamcode.subsystems.Shooter;
+import org.firstinspires.ftc.teamcode.subsystems.Turret;
 
 import dev.nextftc.core.commands.Command;
 import dev.nextftc.core.components.BindingsComponent;
@@ -18,17 +21,16 @@ import dev.nextftc.hardware.impl.MotorEx;
 public class Teleop extends NextFTCOpMode {
     public Teleop() {
         addComponents(
-                new SubsystemComponent(Lift.INSTANCE, Claw.INSTANCE),
+                new SubsystemComponent(Intake.INSTANCE, Shooter.INSTANCE, Turret.INSTANCE),
                 BulkReadComponent.INSTANCE,
                 BindingsComponent.INSTANCE
         );
     }
 
-    // change the names and directions to suit your robot
-    private final MotorEx frontLeftMotor = new MotorEx("front_left").reversed();
-    private final MotorEx frontRightMotor = new MotorEx("front_right");
-    private final MotorEx backLeftMotor = new MotorEx("back_left").reversed();
-    private final MotorEx backRightMotor = new MotorEx("back_right");
+    private final MotorEx frontLeftMotor = new MotorEx("frontLeftMotor").reversed();
+    private final MotorEx frontRightMotor = new MotorEx("frontRightMotor");
+    private final MotorEx backLeftMotor = new MotorEx("backLeftMotor").reversed();
+    private final MotorEx backRightMotor = new MotorEx("backRightMotor");
 
     @Override
     public void onStartButtonPressed() {
@@ -42,18 +44,5 @@ public class Teleop extends NextFTCOpMode {
                 Gamepads.gamepad1().rightStickX()
         );
         driverControlled.schedule();
-
-        Gamepads.gamepad2().dpadUp()
-                .whenBecomesTrue(Lift.INSTANCE.toHigh)
-                .whenBecomesFalse(Claw.INSTANCE.open);
-
-        Gamepads.gamepad2().rightTrigger().greaterThan(0.2)
-                .whenBecomesTrue(
-                        Claw.INSTANCE.close.then(Lift.INSTANCE.toHigh)
-                );
-
-        Gamepads.gamepad2().leftBumper().whenBecomesTrue(
-                Claw.INSTANCE.open.and(Lift.INSTANCE.toLow)
-        );
     }
 }
