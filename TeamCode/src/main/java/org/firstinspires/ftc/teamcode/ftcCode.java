@@ -23,7 +23,7 @@ public class ftcCode extends OpMode {
     @Override
     public void init(){
          limelight = hardwareMap.get(Limelight3A.class, "limelight");
-         limelight.pipelineSwitch(1);
+         limelight.pipelineSwitch(0);
          imu = hardwareMap.get(IMU.class, "imu");
          RevHubOrientationOnRobot revHubOrientationOnRobot = new RevHubOrientationOnRobot(RevHubOrientationOnRobot.LogoFacingDirection.UP,
                  RevHubOrientationOnRobot.UsbFacingDirection.FORWARD);

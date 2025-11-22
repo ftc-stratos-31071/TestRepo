@@ -13,17 +13,19 @@ import dev.nextftc.hardware.controllable.RunToPosition;
 @Config
 public class Turret implements Subsystem {
     public static final Turret INSTANCE = new Turret();
-    private Turret() { }
+    private Turret() {}
 
-    private final MotorEx turret = new MotorEx("turret");
+    public final MotorEx turret = new MotorEx("turret").reversed();
 
     private final ControlSystem turretController = ControlSystem.builder()
             .posPid(TurretConstants.kP, TurretConstants.kI, TurretConstants.kD)
             .build();
 
-    public Command runTurret(double degrees){
-        double clicksDegreeProportion = 1440.0/360.0;
-        double clicks = clicksDegreeProportion * degrees;
+    public Command runTurret(double degrees) {
+        double clicksPerDegree = 1360.0 / 360.0;
+        double clicks = clicksPerDegree * degrees;
+
+        // This is correct for your library version.
         return new RunToPosition(turretController, clicks);
     }
 
@@ -31,4 +33,5 @@ public class Turret implements Subsystem {
     public void periodic() {
         turret.setPower(turretController.calculate(turret.getState()));
     }
+
 }

@@ -11,10 +11,12 @@ import dev.nextftc.ftc.components.BulkReadComponent;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+
 import org.firstinspires.ftc.teamcode.subsystems.Turret;
 
 
-@Autonomous(name = "PIDTest")
+@TeleOp(name = "PIDTest")
 public class PIDTest extends NextFTCOpMode {
     Limelight3A limelight;
 

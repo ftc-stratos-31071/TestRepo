@@ -18,7 +18,6 @@ public class Shooter implements Subsystem {
     private final ServoEx servo = new ServoEx("shooterServo");
     private final MotorEx motor1 = new MotorEx("shooterMotor1").reversed();
     private final MotorEx motor2 = new MotorEx("shooterMotor2");
-
     public final Command moveServoPos = new SetPosition(servo, ShooterConstants.servoPos).requires(this);
     public final Command defaultPos = new SetPosition(servo, ShooterConstants.defaultPos).requires(this);
 
