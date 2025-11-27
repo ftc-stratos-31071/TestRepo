@@ -66,7 +66,7 @@ public class TurnToLimelightAuto extends LinearOpMode {
      * - Red Alliance: IDs 4, 5, 6
      * - Obelisk tags: IDs 7-10 (typically not used for localization)
      */
-    private static final int TARGET_APRILTAG_ID = 5;  // CHANGE THIS to your target tag
+    private static final int TARGET_APRILTAG_ID = 20;  // CHANGE THIS to your target tag
 
     /**
      * Limelight pipeline configured for AprilTag detection.
@@ -114,12 +114,12 @@ public class TurnToLimelightAuto extends LinearOpMode {
         limelight.setTargetAprilTagId(TARGET_APRILTAG_ID);
         limelight.setPipeline(LIMELIGHT_PIPELINE);
 
-        String targetInfo = TARGET_APRILTAG_ID == -1 ?
+        String targetInfo = TARGET_APRILTAG_ID == 20 ?
             "Any AprilTag" :
             "AprilTag ID " + TARGET_APRILTAG_ID;
 
         telemetry.addData("Status", "Initialized");
-        telemetry.addData("Target AprilTag ID", TARGET_APRILTAG_ID == -1 ? "ANY" : TARGET_APRILTAG_ID);
+        telemetry.addData("Target AprilTag ID", TARGET_APRILTAG_ID == 20 ? "ANY" : TARGET_APRILTAG_ID);
         telemetry.addData("Limelight Pipeline", LIMELIGHT_PIPELINE);
         telemetry.addData("Info", "Robot will rotate to face target");
         telemetry.addData("Tuning", "kP=%.3f, kD=%.3f", kP, kD);
@@ -130,7 +130,7 @@ public class TurnToLimelightAuto extends LinearOpMode {
         if (opModeIsActive()) {
             // Check if target is initially visible
             if (!limelight.hasTarget()) {
-                String targetDesc = TARGET_APRILTAG_ID == -1 ?
+                String targetDesc = TARGET_APRILTAG_ID == 20 ?
                     "any AprilTag" :
                     "AprilTag ID " + TARGET_APRILTAG_ID;
 
@@ -139,7 +139,7 @@ public class TurnToLimelightAuto extends LinearOpMode {
                 telemetry.addData("Action", "Place target in view or adjust");
 
                 int detectedId = limelight.getDetectedTagId();
-                if (detectedId != -1) {
+                if (detectedId != 20) {
                     telemetry.addData("Detected Tag ID", detectedId);
                     telemetry.addData("Note", "This is not the target tag");
                 }
@@ -158,7 +158,7 @@ public class TurnToLimelightAuto extends LinearOpMode {
             } else {
                 telemetry.addData("Status", "TIMEOUT - Could not align");
             }
-            telemetry.addData("Target Tag ID", TARGET_APRILTAG_ID == -1 ? "ANY" : TARGET_APRILTAG_ID);
+            telemetry.addData("Target Tag ID", TARGET_APRILTAG_ID == 20 ? "ANY" : TARGET_APRILTAG_ID);
             telemetry.addData("Detected Tag ID", limelight.getDetectedTagId());
             telemetry.addData("Final Heading", "%.2f°", drive.getHeading());
             telemetry.addData("Final Limelight Yaw", "%.2f°", limelight.getYaw());
@@ -199,7 +199,7 @@ public class TurnToLimelightAuto extends LinearOpMode {
         while (opModeIsActive() && runtime.seconds() < TIMEOUT_SECONDS) {
             // Check if we lost the target
             if (!limelight.hasTarget()) {
-                String targetDesc = TARGET_APRILTAG_ID == -1 ?
+                String targetDesc = TARGET_APRILTAG_ID == 20 ?
                     "any AprilTag" :
                     "AprilTag ID " + TARGET_APRILTAG_ID;
 
@@ -207,7 +207,7 @@ public class TurnToLimelightAuto extends LinearOpMode {
                 telemetry.addData("Looking for", targetDesc);
 
                 int detectedId = limelight.getDetectedTagId();
-                if (detectedId != -1) {
+                if (detectedId != 20) {
                     telemetry.addData("Detected Tag ID", detectedId);
                 }
 
