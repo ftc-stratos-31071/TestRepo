@@ -26,4 +26,5 @@ public class Intake implements Subsystem {
     public final Command turnOn = new SetPower(intake, IntakeConstants.intakePower).requires(this);
     public final Command turnOnReverse = new SetPower(intake, -IntakeConstants.intakePowerSlow).requires(this);
     public final Command zeroPower = new SetPower(intake, IntakeConstants.zeroPower).requires(this);
+    public final Command shoot = new SetPower(intake, IntakeConstants.shootPower).requires(this);
 }

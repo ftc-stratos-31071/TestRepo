@@ -25,10 +25,16 @@ public class Shooter implements Subsystem {
     public final Command moveServoPos = new SetPosition(servo, ShooterConstants.servoPos).requires(this);
     public final Command defaultPos = new SetPosition(servo, ShooterConstants.defaultPos).requires(this);
 
-    public final Command moveShooter = new ParallelGroup(
-            new SetPower(motor1, ShooterConstants.motorPower).requires(this),
-            new SetPower(motor2,  ShooterConstants.motorPower).requires(this)
-    ).requires(this);
+    public Command moveShooter(double shooterPower) {
+        return new ParallelGroup(
+                new SetPower(motor1, shooterPower),
+                new SetPower(motor2, shooterPower)
+        ).requires(this);
+    }
+
+    public Command moveServo(double servoPos) {
+        return new SetPosition(servo, servoPos).requires(this);
+    }
 
     public final Command moveShooterReversed = new ParallelGroup(
             new SetPower(motor1, -ShooterConstants.motorPower).requires(this),
@@ -39,4 +45,10 @@ public class Shooter implements Subsystem {
             new SetPower(motor1, ShooterConstants.zeroPower).requires(this),
             new SetPower(motor2,  ShooterConstants.zeroPower).requires(this)
     ).requires(this);
+
+    public double getRPM() {
+        double ticksPerSecond = motor1.getVelocity();
+        double rpm = (ticksPerSecond / 112.0) * 60.0;
+        return rpm;
+    }
 }

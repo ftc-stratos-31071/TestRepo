@@ -9,21 +9,15 @@ import org.firstinspires.ftc.teamcode.subsystems.Lift;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 
-public class ShooterOnCmd {
+public class ShootBallCmd {
 
-    public static Command create(double shooterPower) {
+    public static Command create() {
 
         return new SequentialGroup(
-                new ParallelGroup(
-                        Intake.INSTANCE.defaultPos,
-                        Shooter.INSTANCE.moveShooterReversed,
-                        Intake.INSTANCE.turnOnReverse
-                ),
-                new Delay(0.5),
-                Intake.INSTANCE.zeroPower,
-                Shooter.INSTANCE.moveShooter(shooterPower)
+                Intake.INSTANCE.shoot,
+                new Delay(0.75),
+                Intake.INSTANCE.zeroPower
         )
-                .requires(Shooter.INSTANCE)
                 .requires(Intake.INSTANCE);
     }
 }
