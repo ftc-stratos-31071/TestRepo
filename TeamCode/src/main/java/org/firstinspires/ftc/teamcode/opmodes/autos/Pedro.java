@@ -16,7 +16,7 @@ import dev.nextftc.ftc.components.BulkReadComponent;
 
 import static dev.nextftc.extensions.pedro.PedroComponent.follower;
 
-@Autonomous(name = "NextFTC Autonomous Program Java")
+@Autonomous(name = "Auto1")
 public class Pedro extends NextFTCOpMode {
     public Pedro() {
         addComponents(

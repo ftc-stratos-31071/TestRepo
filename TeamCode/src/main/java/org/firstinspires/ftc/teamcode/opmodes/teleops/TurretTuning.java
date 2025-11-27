@@ -13,7 +13,7 @@ import org.firstinspires.ftc.teamcode.constants.TurretConstants;
 import dev.nextftc.hardware.impl.MotorEx;
 
 
-@TeleOp(name = "TurrentTuning")
+@TeleOp(name = "TurretTuning")
 public class TurretTuning extends OpMode {
     private PIDController controller;
 

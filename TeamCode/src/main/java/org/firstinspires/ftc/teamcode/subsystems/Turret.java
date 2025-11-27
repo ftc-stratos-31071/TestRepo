@@ -15,7 +15,7 @@ public class Turret implements Subsystem {
     public static final Turret INSTANCE = new Turret();
     private Turret() {}
 
-    public final MotorEx turret = new MotorEx("turret").reversed();
+    public final MotorEx turret = new MotorEx("TurretMotor").reversed();
 
     private final ControlSystem turretController = ControlSystem.builder()
             .posPid(TurretConstants.kP, TurretConstants.kI, TurretConstants.kD)

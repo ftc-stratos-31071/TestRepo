@@ -13,7 +13,7 @@ import dev.nextftc.core.components.SubsystemComponent;
 import dev.nextftc.ftc.NextFTCOpMode;
 import dev.nextftc.ftc.components.BulkReadComponent;
 
-@Autonomous(name = "NextFTC Autonomous Program Java")
+@Autonomous(name = "Auto2")
 public class Auto extends NextFTCOpMode {
     public Auto() {
         addComponents(

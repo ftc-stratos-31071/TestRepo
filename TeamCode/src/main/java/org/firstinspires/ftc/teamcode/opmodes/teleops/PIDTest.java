@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode.opmodes.teleops;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-
 import dev.nextftc.core.components.BindingsComponent;
 import dev.nextftc.core.components.SubsystemComponent;
 import dev.nextftc.ftc.NextFTCOpMode;
@@ -15,19 +14,19 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.subsystems.Turret;
 
-
 @TeleOp(name = "PIDTest")
 public class PIDTest extends NextFTCOpMode {
     Limelight3A limelight;
 
     double motorTargetX = 0.0;
+    final double TURRET_LIMIT_DEG = 60.0;  // *** Turret limit set to ±60 degrees ***
 
     @Override
     public void onInit() {
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
-        limelight.start(); // This tells Limelight to start looking!
-        limelight.pipelineSwitch(0); // Switch to pipeline number 0
+        limelight.setPollRateHz(100);
+        limelight.start();
+        limelight.pipelineSwitch(0);
     }
 
     public PIDTest() {
@@ -47,16 +46,21 @@ public class PIDTest extends NextFTCOpMode {
     @Override
     public void onUpdate() {
         LLResult result = limelight.getLatestResult();
+
         if (result != null && result.isValid()) {
-            double tx = result.getTx(); // How far left or right the target is (degrees)
-            double ta = result.getTa(); // How big the target looks (0%-100% of the image)
+            double tx = result.getTx();  // Limelight horizontal offset
 
             motorTargetX = tx;
+
+            // *** Clamp turret angle to ±60° to prevent mechanical damage ***
+            motorTargetX = Math.max(-TURRET_LIMIT_DEG, Math.min(TURRET_LIMIT_DEG, motorTargetX));
+
             telemetry.addData("Target X", tx);
-            telemetry.addData("Target Area", ta);
+            telemetry.addData("Clamped Turret Target", motorTargetX);
         } else {
             telemetry.addData("Limelight", "No Targets");
         }
+
         firstRoutine(motorTargetX).invoke();
         telemetry.update();
     }
