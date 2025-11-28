@@ -195,7 +195,7 @@ public class TurnToLimelightAuto extends LinearOpMode {
         telemetry.update();
 
         runtime.reset();
-
+        
         while (opModeIsActive() && runtime.seconds() < TIMEOUT_SECONDS) {
             // Check if we lost the target
             if (!limelight.hasTarget()) {
