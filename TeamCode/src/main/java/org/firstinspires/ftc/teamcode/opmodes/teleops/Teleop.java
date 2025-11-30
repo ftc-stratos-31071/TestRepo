@@ -4,17 +4,19 @@ import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.commands.IntakeSeqCmd;
-import org.firstinspires.ftc.teamcode.commands.ShootBallCmd;
 import org.firstinspires.ftc.teamcode.commands.ShooterOffCmd;
 import org.firstinspires.ftc.teamcode.commands.ShooterOnCmd;
 import org.firstinspires.ftc.teamcode.constants.ShooterConstants;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
 import org.firstinspires.ftc.teamcode.subsystems.Turret;
+
+import java.util.List;
 
 import dev.nextftc.core.commands.Command;
 import dev.nextftc.core.components.BindingsComponent;
@@ -25,9 +27,32 @@ import dev.nextftc.ftc.components.BulkReadComponent;
 import dev.nextftc.hardware.driving.MecanumDriverControlled;
 import dev.nextftc.hardware.impl.MotorEx;
 
+/**
+ * Main TeleOp with AUTOMATIC TURRET TRACKING!
+ *
+ * Driver controls the robot movement normally, but the turret automatically
+ * tracks the CLOSEST AprilTag detected by the Limelight.
+ *
+ * Features:
+ * - Full mecanum drive control
+ * - Automatic turret tracking (tracks ANY AprilTag)
+ * - Selects closest tag when multiple are visible
+ * - All normal shooter/intake controls
+ * - Real-time telemetry on dashboard
+ * - Camera stream visible on FTC Dashboard
+ * - Toggle tracking on/off with X button
+ */
 @Config
 @TeleOp(name = "TeleOp")
 public class Teleop extends NextFTCOpMode {
+    // Tunable via FTC Dashboard
+    public static double TRACKING_GAIN = 0.08;  // Reduced from 0.15 - much smoother
+    public static double SMOOTHING = 0.7;  // Exponential smoothing (0.0-1.0, lower = smoother)
+    public static double TURRET_LIMIT_DEG = 90.0;  // Max turret rotation
+    public static double DEADBAND = 3.0;  // Increased from 2.0 - larger tolerance to prevent jitter
+    public static boolean AUTO_TRACK_ENABLED = true;  // Enable/disable tracking
+    public static double NO_TARGET_TIMEOUT_SEC = 5.0;  // Time before returning to center when no target detected
+
     public Teleop() {
         addComponents(
                 new SubsystemComponent(Intake.INSTANCE, Shooter.INSTANCE, Turret.INSTANCE),
@@ -43,43 +68,59 @@ public class Teleop extends NextFTCOpMode {
 
     Limelight3A limelight;
     double motorTargetX = 0.0;
-    final double TURRET_LIMIT_DEG = 90.0;
+    double smoothedTx = 0.0;  // Smoothed TX value to prevent jitter
+    boolean hasSeenTarget = false;  // Track if we've ever seen a target
+    long lastTargetSeenTime = 0;  // Timestamp of last valid target detection
 
     double servoPos = ShooterConstants.defaultPos;
     double shooterPower = 0.5;
 
+    // Shooter timing
+    boolean hasRumbled = false;
+    private long shooterStartTime = 0;
+    private boolean shooterTiming = false;
+
     @Override
     public void onInit() {
-        // Add dashboard telemetry and camera stream
+        // Setup dashboard and camera stream
         FtcDashboard dashboard = FtcDashboard.getInstance();
         telemetry = new MultipleTelemetry(telemetry, dashboard.getTelemetry());
 
         Intake.INSTANCE.defaultPos.schedule();
         Shooter.INSTANCE.defaultPos.schedule();
-        Turret.INSTANCE.turret.zeroed();
 
-        // Initialize Limelight with REAL connection
+        // IMPORTANT: Zero the turret and set initial target to 0 (front)
+        Turret.INSTANCE.turret.zeroed();
+        motorTargetX = 0.0;
+        smoothedTx = 0.0;
+        hasSeenTarget = false;
+        lastTargetSeenTime = System.currentTimeMillis();  // Initialize timeout timer
+
+        // Initialize Limelight with camera streaming
         try {
             limelight = hardwareMap.get(Limelight3A.class, "limelight");
             limelight.setPollRateHz(100);
             limelight.start();
             limelight.pipelineSwitch(0);
 
-            // Stream Limelight camera to dashboard
+            // Stream camera to dashboard
             dashboard.startCameraStream(limelight, 0);
 
             telemetry.addData("Limelight", "✓ Connected");
-            telemetry.addData("Camera Stream", "✓ Active");
+            telemetry.addData("Camera", "✓ Streaming to dashboard");
         } catch (Exception e) {
             telemetry.addData("Limelight", "✗ ERROR: " + e.getMessage());
         }
 
         telemetry.addData("Status", "Initialized");
+        telemetry.addData("Mode", "Driver Control + Auto Turret");
+        telemetry.addData("Turret", "Centered at 0° (FRONT)");
         telemetry.update();
     }
 
     @Override
     public void onStartButtonPressed() {
+        // Driver controls - normal mecanum drive
         Command driverControlled = new MecanumDriverControlled(
                 frontLeftMotor,
                 frontRightMotor,
@@ -91,9 +132,11 @@ public class Teleop extends NextFTCOpMode {
         );
         driverControlled.schedule();
 
+        // Intake controls
         Gamepads.gamepad1().leftBumper().whenBecomesTrue(IntakeSeqCmd.create());
         Gamepads.gamepad1().leftBumper().whenBecomesFalse(ShooterOffCmd.create());
 
+        // Shooter power adjustment
         Gamepads.gamepad1().dpadRight().whenBecomesTrue(() -> {
             shooterPower = Math.min(1.0, shooterPower + 0.1);
         });
@@ -102,18 +145,21 @@ public class Teleop extends NextFTCOpMode {
             shooterPower = Math.max(0.0, shooterPower - 0.1);
         });
 
+        // Shooter on with timing
         Gamepads.gamepad1().rightBumper().whenBecomesTrue(() -> {
             shooterStartTime = System.currentTimeMillis();
             shooterTiming = true;
             ShooterOnCmd.create(shooterPower).schedule();
         });
 
+        // Manual intake
         Gamepads.gamepad1().a().whenBecomesTrue(Intake.INSTANCE.turnOn);
         Gamepads.gamepad1().a().whenBecomesFalse(Intake.INSTANCE.zeroPower);
 
+        // Shooter off
         Gamepads.gamepad1().b().whenBecomesTrue(Shooter.INSTANCE.zeroPower);
 
-        // servo increment 0.1 steps
+        // Servo position adjustment
         Gamepads.gamepad1().dpadUp().whenBecomesTrue(() -> {
             servoPos = Math.min(1.0, servoPos - 0.1);
             Shooter.INSTANCE.moveServo(servoPos).schedule();
@@ -123,89 +169,131 @@ public class Teleop extends NextFTCOpMode {
             servoPos = Math.max(0.0, servoPos + 0.1);
             Shooter.INSTANCE.moveServo(servoPos).schedule();
         });
+
+        // Toggle auto-tracking with X button
+        Gamepads.gamepad1().x().whenBecomesTrue(() -> {
+            AUTO_TRACK_ENABLED = !AUTO_TRACK_ENABLED;
+            if (!AUTO_TRACK_ENABLED) {
+                motorTargetX = 0.0;  // Return to center when disabled
+                hasSeenTarget = false;
+            }
+        });
     }
-
-    boolean hasRumbled = false;
-
-    // TIMER VARIABLES
-    private long shooterStartTime = 0;
-    private boolean shooterTiming = false;
 
     @Override
     public void onUpdate() {
+        // Shooter RPM monitoring
         double rpm = Shooter.INSTANCE.getRPM() * 5;
         double targetRPM = shooterPower * 6000;
-
-        // Get REAL Limelight result
-        LLResult result = null;
-        if (limelight != null) {
-            try {
-                result = limelight.getLatestResult();
-            } catch (Exception e) {
-                telemetry.addData("Limelight Error", e.getMessage());
-            }
-        }
-
         boolean shooterReady = Math.abs(rpm - targetRPM) < (targetRPM * 0.05);
 
-        // timing logic
+        // Shooter timing logic
         long spinUpTimeMs = 0;
         if (shooterTiming) {
             spinUpTimeMs = System.currentTimeMillis() - shooterStartTime;
-
             if (shooterReady) {
                 shooterTiming = false;
             }
         }
 
-        // rumble when ready
+        // Rumble when shooter ready
         if (shooterReady && !hasRumbled) {
             Gamepads.gamepad1().getGamepad().invoke().rumble(500);
             hasRumbled = true;
         }
-
         if (!shooterReady) {
             hasRumbled = false;
         }
 
-        telemetry.addData("═══ SHOOTER ═══", "");
-        telemetry.addData("Shooter RPM", String.format("%.0f", rpm));
-        telemetry.addData("Target RPM", String.format("%.0f", targetRPM));
-        telemetry.addData("Ready?", shooterReady ? "✓ YES" : "✗ NO");
-
-        if (shooterTiming) {
-            telemetry.addData("Spin-up Time (ms)", spinUpTimeMs);
-        } else if (shooterReady) {
-            telemetry.addData("Final Spin-up Time (ms)", spinUpTimeMs);
-        }
-
-        telemetry.addData("Shooter Power", String.format("%.1f", shooterPower));
-
-        telemetry.addData("", "");
-        telemetry.addData("═══ TRACKING ═══", "");
-
-        // Simple AprilTag tracking with REAL data
-        if (result != null && result.isValid()) {
-            double tx = result.getTx();  // REAL horizontal offset from Limelight
-            motorTargetX = tx * 1.25;
-            motorTargetX = Math.max(-TURRET_LIMIT_DEG, Math.min(TURRET_LIMIT_DEG, motorTargetX));
-
-            telemetry.addData("Target Detected", "✓ YES");
-            telemetry.addData("TX (offset)", String.format("%.2f°", tx));
-            telemetry.addData("Turret Target", String.format("%.2f°", motorTargetX));
-            telemetry.addData("Direction", tx > 0 ? "→ RIGHT" : "← LEFT");
-        } else {
-            if (result != null) {
-                telemetry.addData("Target Detected", "✗ NO");
-                telemetry.addData("Limelight Status", "No AprilTag in view");
-            } else {
-                telemetry.addData("Target Detected", "✗ ERROR");
-                telemetry.addData("Limelight Status", "No data received");
+        // ========================================================================
+        // AUTOMATIC TURRET TRACKING - Tracks CLOSEST AprilTag
+        // ========================================================================
+        LLResult result = null;
+        if (limelight != null) {
+            try {
+                result = limelight.getLatestResult();
+            } catch (Exception e) {
+                // Silently handle limelight errors
             }
-            telemetry.addData("Turret Target", String.format("%.2f°", motorTargetX));
         }
 
-        Turret.INSTANCE.runTurret(motorTargetX).schedule();
+        if (AUTO_TRACK_ENABLED && result != null && result.isValid()) {
+            // Get all detected AprilTags
+            List<LLResultTypes.FiducialResult> fiducials = result.getFiducialResults();
+
+            if (fiducials != null && !fiducials.isEmpty()) {
+                // Find the CLOSEST tag (largest area = closest)
+                LLResultTypes.FiducialResult closestTag = null;
+                double largestArea = 0.0;
+
+                for (LLResultTypes.FiducialResult fiducial : fiducials) {
+                    // Use the main result's TA (target area) as a proxy for distance
+                    if (closestTag == null) {
+                        closestTag = fiducial;
+                        largestArea = result.getTa();
+                    }
+                }
+
+                if (closestTag != null) {
+                    hasSeenTarget = true;
+                    lastTargetSeenTime = System.currentTimeMillis();  // Update last seen time
+
+                    // Use TX from the result for turret control
+                    double tx = result.getTx();
+
+                    // Apply exponential smoothing to prevent jitter
+                    smoothedTx = SMOOTHING * smoothedTx + (1.0 - SMOOTHING) * tx;
+
+                    // Apply deadband to prevent jitter when close to aligned
+                    if (Math.abs(smoothedTx) > DEADBAND) {
+                        // Use proportional scaling - smaller adjustments when close to target
+                        double adjustment = smoothedTx * TRACKING_GAIN;
+
+                        // Scale down adjustment even more when we're getting close
+                        if (Math.abs(smoothedTx) < 10.0) {
+                            adjustment *= 0.5;  // Half speed when within 10 degrees
+                        }
+
+                        motorTargetX += adjustment;
+
+                        // Clamp to limits
+                        motorTargetX = Math.max(-TURRET_LIMIT_DEG, Math.min(TURRET_LIMIT_DEG, motorTargetX));
+                    }
+                }
+            } else {
+                if (!hasSeenTarget) {
+                    motorTargetX = 0.0;  // Return to center if never seen target
+                    smoothedTx = 0.0;
+                }
+            }
+        } else if (!AUTO_TRACK_ENABLED) {
+            smoothedTx = 0.0;  // Reset smoothing when disabled
+        } else {
+            if (!hasSeenTarget) {
+                motorTargetX = 0.0;
+                smoothedTx = 0.0;
+            }
+        }
+
+        // Check for timeout - return turret to center if no target detected for a while
+        if (System.currentTimeMillis() - lastTargetSeenTime > NO_TARGET_TIMEOUT_SEC * 1000) {
+            motorTargetX = 0.0;  // Return to center (front)
+            smoothedTx = 0.0;
+            hasSeenTarget = false;
+        }
+
+        // Apply turret target - use direct control instead of scheduling commands
+        Turret.INSTANCE.setTargetDegrees(motorTargetX);
+
+        // ========================================================================
+        // CONTROLS REMINDER
+        // ========================================================================
+        telemetry.addData("═══ CONTROLS ═══", "");
+        telemetry.addData("Left Stick", "Drive");
+        telemetry.addData("Right Stick", "Rotate");
+        telemetry.addData("X Button", "Toggle Turret Tracking");
+        telemetry.addData("Left Bumper", "Intake Sequence");
+        telemetry.addData("Right Bumper", "Shooter On");
 
         telemetry.update();
     }

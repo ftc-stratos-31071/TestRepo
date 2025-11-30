@@ -42,16 +42,17 @@ import dev.nextftc.hardware.impl.MotorEx;
  * - Camera stream visible on FTC Dashboard
  */
 @Config
-@TeleOp(name = "TurretToLimelight")
-public class TurretToLimelight extends NextFTCOpMode {
+@TeleOp(name = "TurretToTag")
+public class TurretToTag extends NextFTCOpMode {
     // Tunable via FTC Dashboard
     public static double TRACKING_GAIN = 0.08;  // Reduced from 0.15 - much smoother
     public static double SMOOTHING = 0.7;  // Exponential smoothing (0.0-1.0, lower = smoother)
     public static double TURRET_LIMIT_DEG = 90.0;  // Max turret rotation
     public static double DEADBAND = 3.0;  // Increased from 2.0 - larger tolerance to prevent jitter
     public static boolean AUTO_TRACK_ENABLED = true;  // Enable/disable tracking
+    public static double NO_TARGET_TIMEOUT_SEC = 3.0;  // Time before returning to center when no target detected
 
-    public TurretToLimelight() {
+    public TurretToTag() {
         addComponents(
                 new SubsystemComponent(Intake.INSTANCE, Shooter.INSTANCE, Turret.INSTANCE),
                 BulkReadComponent.INSTANCE,
@@ -68,6 +69,7 @@ public class TurretToLimelight extends NextFTCOpMode {
     double motorTargetX = 0.0;
     double smoothedTx = 0.0;  // Smoothed TX value to prevent jitter
     boolean hasSeenTarget = false;  // Track if we've ever seen a target
+    long lastTargetSeenTime = 0;  // Timestamp of last valid target detection
 
     double servoPos = ShooterConstants.defaultPos;
     double shooterPower = 0.5;
@@ -91,6 +93,7 @@ public class TurretToLimelight extends NextFTCOpMode {
         motorTargetX = 0.0;
         smoothedTx = 0.0;
         hasSeenTarget = false;
+        lastTargetSeenTime = System.currentTimeMillis();  // Initialize timeout timer
 
         // Initialize Limelight with camera streaming
         try {
@@ -232,6 +235,7 @@ public class TurretToLimelight extends NextFTCOpMode {
 
                 if (closestTag != null) {
                     hasSeenTarget = true;
+                    lastTargetSeenTime = System.currentTimeMillis();  // Update last seen time
 
                     // Use TX from the result for turret control
                     double tx = result.getTx();
@@ -292,8 +296,15 @@ public class TurretToLimelight extends NextFTCOpMode {
             }
         }
 
-        // Apply turret command - ONLY if we have a valid target or are returning to center
-        Turret.INSTANCE.runTurret(motorTargetX).schedule();
+        // Check for timeout - return turret to center if no target detected for a while
+        if (System.currentTimeMillis() - lastTargetSeenTime > NO_TARGET_TIMEOUT_SEC * 1000) {
+            motorTargetX = 0.0;  // Return to center
+            smoothedTx = 0.0;
+            hasSeenTarget = false;
+        }
+
+        // Apply turret target - use direct control instead of scheduling commands
+        Turret.INSTANCE.setTargetDegrees(motorTargetX);
 
         // ========================================================================
         // SHOOTER TELEMETRY

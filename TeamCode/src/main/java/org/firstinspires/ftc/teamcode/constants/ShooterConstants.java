@@ -20,4 +20,8 @@ public class ShooterConstants {
 
     // Tolerance for RPM control (±)
     public static double rpmTolerance = 50.0;
+
+    // Command timing delays (in seconds)
+    public static double reverseDelaySeconds = 0.5;
+    public static double shootDelaySeconds = 0.75;
 }

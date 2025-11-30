@@ -33,8 +33,22 @@ public class Shooter implements Subsystem {
     private double targetVelocity = 0;
     private boolean velocityControlActive = false;
 
-    public final Command moveServoPos = new SetPosition(servo, ShooterConstants.servoPos).requires(this);
-    public final Command defaultPos = new SetPosition(servo, ShooterConstants.defaultPos).requires(this);
+    // Dynamic servo commands - read values from ShooterConstants each time
+    public final Command moveServoPos = new Command() {
+        @Override
+        public boolean isDone() {
+            servo.setPosition(ShooterConstants.servoPos);
+            return true;
+        }
+    }.requires(this);
+
+    public final Command defaultPos = new Command() {
+        @Override
+        public boolean isDone() {
+            servo.setPosition(ShooterConstants.defaultPos);
+            return true;
+        }
+    }.requires(this);
 
     /**
      * Run shooter at a specific power (legacy method, not PID controlled)
@@ -65,15 +79,27 @@ public class Shooter implements Subsystem {
         return new SetPosition(servo, servoPos).requires(this);
     }
 
-    public final Command moveShooterReversed = new ParallelGroup(
-            new SetPower(motor1, -ShooterConstants.motorPower),
-            new SetPower(motor2, -ShooterConstants.motorPower)
-    ).requires(this);
+    // Dynamic commands that read from constants
+    public final Command moveShooterReversed = new Command() {
+        public void execute() {
+            motor1.setPower(-ShooterConstants.motorPower);
+            motor2.setPower(-ShooterConstants.motorPower);
+        }
 
-    public final Command zeroPower = new ParallelGroup(
-            new SetPower(motor1, ShooterConstants.zeroPower),
-            new SetPower(motor2, ShooterConstants.zeroPower)
-    ).requires(this);
+        @Override
+        public boolean isDone() {
+            return false;
+        }
+    }.requires(this);
+
+    public final Command zeroPower = new Command() {
+        @Override
+        public boolean isDone() {
+            motor1.setPower(ShooterConstants.zeroPower);
+            motor2.setPower(ShooterConstants.zeroPower);
+            return true;
+        }
+    }.requires(this);
 
     /**
      * Get current shooter RPM
